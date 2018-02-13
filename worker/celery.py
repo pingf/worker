@@ -3,7 +3,7 @@ import traceback
 from copy import deepcopy
 from time import sleep
 
-from celery import group, chain, Celery
+from celery import group, chain, Celery, chord
 from celery.bin.control import inspect
 from loader.function import load
 from logcc.util.table import trace_table
@@ -31,24 +31,30 @@ celery_worker = celery_thread_worker
 def parallel_chunked(data, info):
     func_str = info.get('celery_worker')
     func = load(func_str)
-    tasks_data = []
     tasks = []
-    for i, d in enumerate(data):
-        for index, chunked_data in enumerate(grouper_it(d, info.get('chunk_size', 20))):
-            # tasks_data.append(chunked_data)
-            sig = func.s(chunked_data, info)
-            tasks.append(sig)
-    # print(tasks)
-    callback = info.get('group_callback')
+
+    callback = info.get('each_callback')
     if callback:
         callback = load(callback)
-        return group(*tasks) | callback.s()
+    for i, d in enumerate(data):
+        for index, chunked_data in enumerate(grouper_it(d, info.get('chunk_size', 20))):
+            if callback:
+                # the result to callback will be returned as [result]
+                sig = func.si(chunked_data, info) | callback.s()
+            else:
+                sig = func.si(chunked_data, info)
+            tasks.append(sig)
+    # removed for return group results
+    # callback = info.get('group_callback')
+    # if callback:
+    #     callback = load(callback)
+    #     return group(tasks) | callback.s()
     g = group(tasks)
     return g
 
 
-def wait_for_group(results, celery_sleep=None, callback=None):
-    if callback:
+def wait_for_group(results, celery_sleep=None, sync=None):
+    if sync:
         rs = results.results
         while 1:
             success = 0
@@ -62,7 +68,8 @@ def wait_for_group(results, celery_sleep=None, callback=None):
             if celery_sleep:
                 sleep(celery_sleep)
     else:
-        sleep(celery_sleep)
+        if celery_sleep:
+            sleep(celery_sleep)
 
 
 def final_results(results_list):
@@ -77,32 +84,52 @@ def final_results(results_list):
 def work(data, info):
     celery_chunk_size = info.get('celery_chunk_size', 80)
     celery_max_workers = info.get('celery_max_workers', 4)
-    celery_sleep = info.get('celery_sleep', 0.2)
-    queue = info.get('queue', 'worker')
-    callback = info.get('final_callback')
+    celery_sleep = info.get('celery_sleep')
+    queue = info.get('queue')
+    sync_callback = info.get('sync_callback')
+    final_callback = info.get('final_callback')
+    dummy = info.get('dummy')
+    dummy = load(dummy)
     splitted_data = []
 
     for index, data_chunked in enumerate(grouper_it(data, celery_chunk_size)):
         splitted_data.append(data_chunked)
+
     results_list = []
-    for index, splitted_chunked in enumerate(grouper_it(splitted_data, celery_max_workers)):
-        tasks = parallel_chunked(splitted_chunked, info)
-        results = tasks.apply_async(queue=queue)
-        wait_for_group(results, celery_sleep, callback)
-        results_list.append(results)
+    if sync_callback:
+        for index, splitted_chunked in enumerate(grouper_it(splitted_data, celery_max_workers)):
+            tasks = parallel_chunked(splitted_chunked, info)
+            if queue:
+                results = tasks.apply_async(queue=queue)
+            else:
+                results = tasks.apply_async()
+            wait_for_group(results, celery_sleep, sync_callback)
+            results_list.append(results)
 
-    if callback:
         results = final_results(results_list)
-        callback = load(callback)
-        return callback(results)
-    return results_list
+        sync_callback = load(sync_callback)
+        return sync_callback(results)
+    else:
+        tasks_list = []
+        for index, splitted_chunked in enumerate(grouper_it(splitted_data, celery_max_workers)):
+            tasks = parallel_chunked(splitted_chunked, info)
+            if len(tasks) == 1:
+                # chord([A], B) can be optimized as A | B
+                # - Issue #3323
+                tasks_list.append(tasks | dummy.si())
+            else:
+                tasks_list.append(chord(tasks, dummy.si()))
 
+        if final_callback:
+            final_callback = load(final_callback)
+            task_to_run = chain(tasks_list) | final_callback.si()
+        else:
+            task_to_run = chain(tasks_list)
 
-app = Celery('worker', include=[
-    'worker.celery_demo_tasks',
-    'test.functional.test_celery',
-])
-app.config_from_object('worker.celeryconfig')
+        if queue:
+            results = task_to_run.apply_async(queue=queue)
+        else:
+            results = task_to_run.apply_async()
 
-if __name__ == '__main__':
-    app.start()
+        results_list.append(results)
+        return results_list

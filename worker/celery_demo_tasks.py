@@ -1,6 +1,7 @@
 from copy import deepcopy
 
-from worker.celery import app, work
+from worker.celery import work
+from worker.celery_app import app
 from worker.worker import Worker
 
 

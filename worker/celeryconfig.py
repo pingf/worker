@@ -12,15 +12,15 @@ broker_url = os.environ.get('CELERY_BROKER_URL', 'amqp://dameng:hello@' + ip + '
 # result_backend =broker_url #os.environ.get('CELERY_RESULT_URL', 'file:///tmp/celery_results')
 result_backend = os.environ.get('CELERY_RESULT_URL', 'redis://:hello@' + ip + ':6379/1')
 
-task_serializer = 'msgpack'
+task_serializer = 'pickle'#'msgpack'
 result_serializer = 'json'
-accept_content = ['json', 'msgpack']
+accept_content = ['json', 'msgpack', 'pickle']
 timezone = 'UTC'
 enable_utc = True
 # CELERY_CHORD_PROPAGATES
 chord_propagates = False
-worker_prefetch_multiplier = 1
-worker_concurrency = 1
+# worker_prefetch_multiplier = 1
+worker_concurrency = 4
 
 task_send_sent_event = True
 
