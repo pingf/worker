@@ -11,7 +11,7 @@ from worker.util import grouper_it
 
 
 def work(data, info):
-    log = logging.getLogger('worker')
+    log = logging.getLogger(info.get('log', 'worker'))
     results = []
     chunk_size = info.get('chunk_size', 20)
     max_workers = info.get('max_workers', 4)

@@ -27,8 +27,8 @@ def worker_do_sth(data, info):
     # sleep(1)
     # raise Exception('......')
     print('work' + str(data))
-    sleep(2)
-    print('after sleep')
+    # sleep(2)
+    # print('after sleep')
     return data
     # return 'haha'
     # print(str(data) + '.2222')
@@ -70,7 +70,7 @@ def dummy(*args, **kwargs):
     return "OK"
 
 
-def xtest_celery():
+def test_celery():
     # g1 = group(add.si(2, 3))
     # g2 = group([add.si(4, 4)])
     # s1 = chord(g1, dummy.si())
@@ -84,22 +84,16 @@ def xtest_celery():
 
 
     data = [
-        'u11', 'u22', 'u33', 'u44', 'u21', 'u22', 'u23', 'u24',
-        'u31', 'u32',
-        'u33', 'u34',
-        'u41', 'u42', 'u43', 'u44', 'u51', 'u52', 'u53', 'u54',
+        '1', '2', '3', '4',
     ]*1
     info = {
-        'celery_worker': 'test.functional.test_celery.simple',
-        'worker': 'test.functional.test_celery.worker_do_sth',
+        'celery_worker': 'test.functional.test_celery_group_little.simple',
+        'worker': 'test.functional.test_celery_group_little.worker_do_sth',
         'celery_max_workers': 1,
-        'celery_chunk_size': 40,
-        'chunk_size': 40,
-        # 'final_callback': 'test.functional.test_celery.final_callback_si',
+        'celery_chunk_size':2,
+        'chunk_size': 2,
+        'queue': 'a1',
         'dummy': 'test.functional.test_celery.dummy',
-        'sync_callback': 'test.functional.test_celery.final_callback',
-        'each_callback': 'test.functional.test_celery.callback',
-        # 'queue': 'worker'
     }
     # resp = work(data=data,
 

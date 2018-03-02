@@ -42,7 +42,8 @@ async def test3(data, info):
 
 async def bound_process(func, data, info):
     response = None
-    log = logging.getLogger('worker')
+    log = logging.getLogger(info.get('log', 'worker'))
+    # log = logging.getLogger('worker')
     try:
         start_time = time.time()
         async with info.get('semaphore'):

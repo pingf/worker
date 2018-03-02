@@ -30,6 +30,7 @@ celery_worker = celery_thread_worker
 
 def parallel_chunked(data, info):
     func_str = info.get('celery_worker')
+    queue = info.get('queue', 'celery')
     func = load(func_str)
     tasks = []
 
@@ -40,9 +41,9 @@ def parallel_chunked(data, info):
         for index, chunked_data in enumerate(grouper_it(d, info.get('chunk_size', 20))):
             if callback:
                 # the result to callback will be returned as [result]
-                sig = func.si(chunked_data, info) | callback.s()
+                sig = func.si(chunked_data, info).set(queue=queue) | callback.s().set(queue=queue)
             else:
-                sig = func.si(chunked_data, info)
+                sig = func.si(chunked_data, info).set(queue=queue)
             tasks.append(sig)
     # removed for return group results
     # callback = info.get('group_callback')
@@ -82,10 +83,11 @@ def final_results(results_list):
 
 
 def work(data, info):
+    print('celery')
     celery_chunk_size = info.get('celery_chunk_size', 80)
     celery_max_workers = info.get('celery_max_workers', 4)
     celery_sleep = info.get('celery_sleep')
-    queue = info.get('queue')
+    queue = info.get('queue', 'celery')
     sync_callback = info.get('sync_callback')
     final_callback = info.get('final_callback')
     dummy = info.get('dummy')
@@ -99,10 +101,7 @@ def work(data, info):
     if sync_callback:
         for index, splitted_chunked in enumerate(grouper_it(splitted_data, celery_max_workers)):
             tasks = parallel_chunked(splitted_chunked, info)
-            if queue:
-                results = tasks.apply_async(queue=queue)
-            else:
-                results = tasks.apply_async()
+            results = tasks.apply_async()
             wait_for_group(results, celery_sleep, sync_callback)
             results_list.append(results)
 
@@ -116,20 +115,17 @@ def work(data, info):
             if len(tasks) == 1:
                 # chord([A], B) can be optimized as A | B
                 # - Issue #3323
-                tasks_list.append(tasks | dummy.si())
+                tasks_list.append(tasks | dummy.si().set(queue=queue))
             else:
-                tasks_list.append(chord(tasks, dummy.si()))
+                tasks_list.append(chord(tasks, dummy.si().set(queue=queue)))
 
         if final_callback:
             final_callback = load(final_callback)
-            task_to_run = chain(tasks_list) | final_callback.si()
+            task_to_run = chain(tasks_list) | final_callback.si().set(queue=queue)
         else:
             task_to_run = chain(tasks_list)
 
-        if queue:
-            results = task_to_run.apply_async(queue=queue)
-        else:
-            results = task_to_run.apply_async()
+        results = task_to_run.apply_async()
 
         results_list.append(results)
         return results_list

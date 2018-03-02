@@ -1,5 +1,6 @@
 import random
 
+from worker import caoe
 from worker.loop import work as loop_work
 from worker.coroutine import work as coroutine_work
 from worker.thread import work as thread_work
@@ -13,6 +14,8 @@ worker_map = {
     'process': process_work,
     'celery': celery_work
 }
+
+caoe.install()
 
 
 class Worker:
@@ -37,22 +40,21 @@ def test():
     raise Exception('test')
 
 
-
 if __name__ == '__main__':
     data = [
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-               'u1', 'u2', 'u3', 'u4',
-           ]
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+        'u1', 'u2', 'u3', 'u4',
+    ]
     info = {
         'worker': 'worker.worker.worker_do_sth',
-        'chunk_size':2
+        'chunk_size': 2
 
     }
     # worker = Worker(mode='coroutine')
