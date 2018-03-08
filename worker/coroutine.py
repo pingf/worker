@@ -1,7 +1,7 @@
 import logging
 import random
 import asyncio
-from _signal import SIGINT, signal
+# from _signal import SIGINT, signal
 from copy import deepcopy
 from datetime import datetime
 
@@ -105,7 +105,7 @@ def work(data, info):
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     tasks = asyncio.ensure_future(_work(data, info))
-    signal(SIGINT, lambda s, f: loop.stop())
+    # signal(SIGINT, lambda s, f: loop.stop())
     try:
         response = loop.run_until_complete(tasks)
     except KeyboardInterrupt as exc:
