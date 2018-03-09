@@ -14,7 +14,7 @@ def read(fname):
 
 setup(
     name='worker',
-    version='2018.03.02',
+    version='2018.03.03',
     url='https://github.com/pingf/worker.git',
     license='BSD',
     author='Jesse MENG',

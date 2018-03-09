@@ -83,7 +83,6 @@ def final_results(results_list):
 
 
 def work(data, info):
-    print('celery')
     celery_chunk_size = info.get('celery_chunk_size', 80)
     celery_max_workers = info.get('celery_max_workers', 4)
     celery_sleep = info.get('celery_sleep')
@@ -121,7 +120,7 @@ def work(data, info):
 
         if final_callback:
             final_callback = load(final_callback)
-            task_to_run = chain(tasks_list) | final_callback.si().set(queue=queue)
+            task_to_run = chain(tasks_list) | final_callback.si(data, info).set(queue=queue)
         else:
             task_to_run = chain(tasks_list)
 
